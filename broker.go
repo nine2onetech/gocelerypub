@@ -98,8 +98,8 @@ func (b *AMQPBroker) isClosed() bool {
 func (b *AMQPBroker) Reconnect() error {
 	// Close existing connection and channel if open
 	if !b.isClosed() {
-		b.Channel.Close()
-		b.Connection.Close()
+		b.Channel.Close()    //nolint:errcheck
+		b.Connection.Close() //nolint:errcheck
 	}
 
 	// Re-establish connection and channel

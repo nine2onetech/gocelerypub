@@ -59,11 +59,11 @@ func SetupRabbitMQContainer(t *testing.T) (*RabbitMQTestContainer, func()) {
 func ConsumeMessage(t *testing.T, amqpURL, queueName string, timeout time.Duration) *amqp091.Delivery {
 	conn, err := amqp091.Dial(amqpURL)
 	require.NoError(t, err, "Failed to connect to RabbitMQ")
-	defer conn.Close()
+	defer conn.Close() //nolint:errcheck
 
 	ch, err := conn.Channel()
 	require.NoError(t, err, "Failed to open channel")
-	defer ch.Close()
+	defer ch.Close() //nolint:errcheck
 
 	// Declare queue (passive=false to ensure it exists)
 	_, err = ch.QueueDeclare(
