@@ -1,4 +1,4 @@
-package go_celery_publisher
+package gocelerypub
 
 import (
 	"testing"

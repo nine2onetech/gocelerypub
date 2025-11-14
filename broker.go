@@ -1,4 +1,4 @@
-package go_celery_publisher
+package gocelerypub
 
 import (
 	amqp "github.com/rabbitmq/amqp091-go"

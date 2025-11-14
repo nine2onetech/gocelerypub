@@ -6,8 +6,8 @@
 //	mockgen -source=broker.go -destination=mock_broker_test.go -package=go_celery_publisher
 //
 
-// Package go_celery_publisher is a generated GoMock package.
-package go_celery_publisher
+// package gocelerypub is a generated GoMock package.
+package gocelerypub
 
 import (
 	reflect "reflect"
