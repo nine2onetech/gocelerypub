@@ -103,12 +103,20 @@ func New(cfg Config) (*Publisher, error) {
 	return p, nil
 }
 
+func (p *Publisher) CanPublish() bool {
+	return p.broker.CanPublish()
+}
+
+func (p *Publisher) Reconnect() error {
+	return p.broker.Reconnect()
+}
+
 // handleRequest handles the actual publish logic with connection management and retry logic.
 // It attempts to reconnect if the broker connection is lost and retries once on PRECONDITION_FAILED errors.
 func (p *Publisher) handleRequest(req *PublishRequest) error {
 	// Reconnect if the broker connection is lost
-	if !p.broker.CanPublish() {
-		if err := p.broker.Reconnect(); err != nil {
+	if !p.CanPublish() {
+		if err := p.Reconnect(); err != nil {
 			return fmt.Errorf("reconnect failed: %w", err)
 		}
 	}
