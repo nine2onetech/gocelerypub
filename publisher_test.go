@@ -189,6 +189,7 @@ func TestPublisher_HandleRequest(t *testing.T) {
 		broker: mockBroker,
 		config: Config{
 			BrokerType:             AMQP,
+			HostURL:                "amqp://localhost",
 			PublishMode:            DirectMode,
 			messageProtocolVersion: 1,
 		},
@@ -211,7 +212,7 @@ func TestPublisher_HandleRequest(t *testing.T) {
 
 	t.Run("reconnect when broker cannot publish", func(t *testing.T) {
 		mockBroker.EXPECT().CanPublish().Return(false).Times(1)
-		mockBroker.EXPECT().Reconnect().Return(nil).Times(1)
+		mockBroker.EXPECT().Reconnect(pub.config.HostURL).Return(nil).Times(1)
 		mockBroker.EXPECT().SendCeleryMessage(gomock.Any()).Return(nil).Times(1)
 
 		err := pub.handleRequest(req)
@@ -223,7 +224,7 @@ func TestPublisher_HandleRequest(t *testing.T) {
 	t.Run("reconnect failure", func(t *testing.T) {
 		reconnectErr := errors.New("reconnect failed")
 		mockBroker.EXPECT().CanPublish().Return(false).Times(1)
-		mockBroker.EXPECT().Reconnect().Return(reconnectErr).Times(1)
+		mockBroker.EXPECT().Reconnect(pub.config.HostURL).Return(reconnectErr).Times(1)
 
 		err := pub.handleRequest(req)
 		if err == nil {
@@ -239,7 +240,7 @@ func TestPublisher_HandleRequest(t *testing.T) {
 		preconditionErr := errors.New("PRECONDITION_FAILED - queue mismatch")
 		mockBroker.EXPECT().CanPublish().Return(true).Times(1)
 		mockBroker.EXPECT().SendCeleryMessage(gomock.Any()).Return(preconditionErr).Times(1)
-		mockBroker.EXPECT().Reconnect().Return(nil).Times(1)
+		mockBroker.EXPECT().Reconnect(pub.config.HostURL).Return(nil).Times(1)
 		mockBroker.EXPECT().SendCeleryMessage(gomock.Any()).Return(nil).Times(1)
 
 		err := pub.handleRequest(req)
@@ -253,7 +254,7 @@ func TestPublisher_HandleRequest(t *testing.T) {
 		reconnectErr := errors.New("reconnect failed")
 		mockBroker.EXPECT().CanPublish().Return(true).Times(1)
 		mockBroker.EXPECT().SendCeleryMessage(gomock.Any()).Return(preconditionErr).Times(1)
-		mockBroker.EXPECT().Reconnect().Return(reconnectErr).Times(1)
+		mockBroker.EXPECT().Reconnect(pub.config.HostURL).Return(reconnectErr).Times(1)
 
 		err := pub.handleRequest(req)
 		if err == nil {
@@ -269,7 +270,7 @@ func TestPublisher_HandleRequest(t *testing.T) {
 		preconditionErr := errors.New("PRECONDITION_FAILED - queue mismatch")
 		mockBroker.EXPECT().CanPublish().Return(true).Times(1)
 		mockBroker.EXPECT().SendCeleryMessage(gomock.Any()).Return(preconditionErr).Times(1)
-		mockBroker.EXPECT().Reconnect().Return(nil).Times(1)
+		mockBroker.EXPECT().Reconnect(pub.config.HostURL).Return(nil).Times(1)
 		mockBroker.EXPECT().SendCeleryMessage(gomock.Any()).Return(preconditionErr).Times(1)
 
 		err := pub.handleRequest(req)

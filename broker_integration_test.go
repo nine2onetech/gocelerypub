@@ -225,3 +225,100 @@ func TestAMQPBroker_SendCeleryMessage(t *testing.T) {
 	assert.Equal(t, "tasks.manual", receivedTaskMsg["task"])
 	VerifyTaskMessageArgs(t, receivedTaskMsg, []interface{}{100, 200})
 }
+
+// TestAMQPBroker_Reconnect_Integration tests the Reconnect method with real broker
+func TestAMQPBroker_Reconnect_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	// Setup RabbitMQ container
+	rabbitMQ, cleanup := SetupRabbitMQContainer(t)
+	defer cleanup()
+
+	// Create broker
+	broker := NewAMQPBroker(rabbitMQ.AmqpURL)
+
+	t.Run("Reconnect succeeds with valid host URL", func(t *testing.T) {
+		// Close existing connection
+		err := broker.Channel.Close()
+		require.NoError(t, err)
+		err = broker.Connection.Close()
+		require.NoError(t, err)
+
+		// Reconnect with the same broker URL
+		err = broker.Reconnect(rabbitMQ.AmqpURL)
+		require.NoError(t, err)
+
+		// Verify we can send messages after reconnect
+		taskMsg := &TaskMessageV1{
+			ID:   "reconnect-test-id",
+			Task: "tasks.reconnect_test",
+			Args: []interface{}{1, 2, 3},
+		}
+
+		queueName := "test-reconnect-queue"
+		celeryMsg := taskMsg.ToCeleryMessage(CeleryDeliveryInfo{
+			RoutingKey: queueName,
+			Exchange:   "",
+		})
+
+		err = broker.SendCeleryMessage(celeryMsg)
+		require.NoError(t, err, "Should be able to send message after reconnect")
+
+		// Verify message was published
+		delivery := ConsumeMessage(t, rabbitMQ.AmqpURL, queueName, 5*time.Second)
+		receivedMsg := DecodeTaskMessage(t, delivery)
+		assert.Equal(t, "tasks.reconnect_test", receivedMsg["task"])
+		assert.Equal(t, "reconnect-test-id", receivedMsg["id"])
+	})
+
+	t.Run("Reconnect closes old channel and connection properly", func(t *testing.T) {
+		// Create fresh broker for this test
+		testBroker := NewAMQPBroker(rabbitMQ.AmqpURL)
+
+		// Get reference to old channel/connection before closing
+		oldChan := testBroker.Channel
+		oldConn := testBroker.Connection
+
+		// Verify they are open
+		require.False(t, oldChan.IsClosed(), "Initial channel should be open")
+		require.False(t, oldConn.IsClosed(), "Initial connection should be open")
+
+		// Close them to simulate disconnection
+		err := oldChan.Close()
+		require.NoError(t, err)
+		err = oldConn.Close()
+		require.NoError(t, err)
+
+		// Reconnect with new URL
+		err = testBroker.Reconnect(rabbitMQ.AmqpURL)
+		require.NoError(t, err)
+
+		// Verify new channel and connection are open
+		require.False(t, testBroker.Channel.IsClosed(), "New channel should be open after reconnect")
+		require.False(t, testBroker.Connection.IsClosed(), "New connection should be open after reconnect")
+
+		// Verify we can send a message with the new connection
+		queueName := "test-reconnect-verify"
+		taskMsg := &TaskMessageV1{
+			ID:   "reconnect-verify-msg",
+			Task: "tasks.reconnect_verify",
+			Args: []interface{}{"test"},
+		}
+
+		celeryMsg := taskMsg.ToCeleryMessage(CeleryDeliveryInfo{
+			RoutingKey: queueName,
+			Exchange:   "",
+		})
+
+		err = testBroker.SendCeleryMessage(celeryMsg)
+		require.NoError(t, err)
+
+		// Verify message was published
+		delivery := ConsumeMessage(t, rabbitMQ.AmqpURL, queueName, 5*time.Second)
+		receivedMsg := DecodeTaskMessage(t, delivery)
+		assert.Equal(t, "reconnect-verify-msg", receivedMsg["id"])
+		assert.Equal(t, "tasks.reconnect_verify", receivedMsg["task"])
+	})
+}
