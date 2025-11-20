@@ -6,7 +6,7 @@ import (
 
 type Broker interface {
 	CanPublish() bool
-	Reconnect() error
+	Reconnect(host string) error
 	SendCeleryMessage(msg *CeleryMessage) error
 }
 
@@ -95,15 +95,15 @@ func (b *AMQPBroker) isClosed() bool {
 	return b.Channel.IsClosed() || b.Connection.IsClosed()
 }
 
-func (b *AMQPBroker) Reconnect() error {
+func (b *AMQPBroker) Reconnect(host string) error {
 	// Close existing connection and channel if open
 	if !b.isClosed() {
 		b.Channel.Close()    //nolint:errcheck
 		b.Connection.Close() //nolint:errcheck
 	}
 
-	// Re-establish connection and channel
-	conn, channel := NewAMQPConnection(b.Connection.Config.Vhost)
+	// Re-establish connection and channel with provided host
+	conn, channel := NewAMQPConnection(host)
 	b.Connection = conn
 	b.Channel = channel
 

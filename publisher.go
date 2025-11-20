@@ -108,7 +108,7 @@ func (p *Publisher) CanPublish() bool {
 }
 
 func (p *Publisher) Reconnect() error {
-	return p.broker.Reconnect()
+	return p.broker.Reconnect(p.config.HostURL)
 }
 
 // handleRequest handles the actual publish logic with connection management and retry logic.
@@ -126,7 +126,7 @@ func (p *Publisher) handleRequest(req *PublishRequest) error {
 
 	// Retry once on PRECONDITION_FAILED error (e.g., queue settings mismatch)
 	if err != nil && strings.Contains(err.Error(), "PRECONDITION_FAILED") {
-		if retryErr := p.broker.Reconnect(); retryErr != nil {
+		if retryErr := p.Reconnect(); retryErr != nil {
 			return fmt.Errorf("reconnect after PRECONDITION_FAILED failed: %w", retryErr)
 		}
 
