@@ -145,7 +145,7 @@ pub, err := publisher.New(publisher.Config{
 
 #### `Publish(req *PublishRequest) error`
 
-Publishes a task directly. **Not goroutine-safe in DirectMode**.
+Publishes a task directly. **Not goroutine-safe**. Does not include automatic reconnection or retry logic.
 
 ```go
 err := pub.Publish(&publisher.PublishRequest{
@@ -176,6 +176,14 @@ Gracefully shuts down the publisher, closing channels and broker connections.
 ```go
 defer pub.Close()
 ```
+
+#### `CanPublish() bool`
+
+Returns whether the broker connection is alive and ready to publish.
+
+#### `Reconnect() error`
+
+Manually reconnects to the broker. Useful in DirectMode where automatic reconnection is not provided.
 
 ### PublishRequest
 
@@ -221,11 +229,13 @@ All goroutines send requests to an internal channel. A single dedicated goroutin
 
 ## Error Handling
 
-The package includes built-in error handling:
+The package includes built-in error handling in **ChannelMode** (`Send`):
 
-- **Automatic Reconnection**: If the broker connection is lost, it automatically attempts to reconnect
+- **Automatic Reconnection**: If the broker connection is lost, it automatically attempts to reconnect before publishing
 - **PRECONDITION_FAILED Retry**: On queue mismatch errors, it reconnects and retries once
 - **Error Propagation**: All errors are properly wrapped and returned to the caller
+
+> **Note**: `Publish()` (DirectMode) does not include automatic reconnection or retry logic. Use `CanPublish()` and `Reconnect()` to manage connections manually if needed.
 
 ## Testing
 
@@ -242,7 +252,7 @@ go test -cover ./...
 go test -v ./...
 ```
 
-The package includes comprehensive unit tests using mocks for the broker interface.
+The package includes unit tests using mocks for the broker interface and integration tests using [testcontainers-go](https://github.com/testcontainers/testcontainers-go) with a real RabbitMQ instance.
 
 ## Examples
 
