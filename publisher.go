@@ -112,7 +112,7 @@ func (p *Publisher) Reconnect() error {
 }
 
 // handleRequest handles the actual publish logic with connection management and retry logic.
-// It attempts to reconnect if the broker connection is lost and retries once on PRECONDITION_FAILED errors.
+// It attempts to reconnect if the broker connection is lost and retries once on recoverable errors.
 func (p *Publisher) handleRequest(req *PublishRequest) error {
 	// Reconnect if the broker connection is lost
 	if !p.CanPublish() {
@@ -124,10 +124,10 @@ func (p *Publisher) handleRequest(req *PublishRequest) error {
 	// Attempt to publish the message
 	err := p.Publish(req)
 
-	// Retry once on PRECONDITION_FAILED error (e.g., queue settings mismatch)
-	if err != nil && strings.Contains(err.Error(), "PRECONDITION_FAILED") {
+	// Retry once on recoverable errors (connection lost or queue settings mismatch)
+	if err != nil && isRecoverableError(err) {
 		if retryErr := p.Reconnect(); retryErr != nil {
-			return fmt.Errorf("reconnect after PRECONDITION_FAILED failed: %w", retryErr)
+			return fmt.Errorf("reconnect failed: %w", retryErr)
 		}
 
 		// Retry the publish operation
@@ -135,6 +135,16 @@ func (p *Publisher) handleRequest(req *PublishRequest) error {
 	}
 
 	return err
+}
+
+// isRecoverableError checks if the error is a recoverable broker connection error
+// that can be resolved by reconnecting.
+func isRecoverableError(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "PRECONDITION_FAILED") ||
+		strings.Contains(msg, "channel/connection is not open") ||
+		strings.Contains(msg, "connection is not open") ||
+		strings.Contains(msg, "channel is closed")
 }
 
 // Publish publishes a Celery task to the specified queue.
