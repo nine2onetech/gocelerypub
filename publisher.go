@@ -127,7 +127,7 @@ func (p *Publisher) handleRequest(req *PublishRequest) error {
 	// Retry once on recoverable errors (connection lost or queue settings mismatch)
 	if err != nil && isRecoverableError(err) {
 		if retryErr := p.Reconnect(); retryErr != nil {
-			return fmt.Errorf("reconnect failed: %w", retryErr)
+			return fmt.Errorf("%w: reconnect failed: %w", err, retryErr)
 		}
 
 		// Retry the publish operation
